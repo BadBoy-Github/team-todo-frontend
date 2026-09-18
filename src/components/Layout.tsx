@@ -41,6 +41,11 @@ export const Layout = () => {
             >
               <Menu className="w-5 h-5" />
             </button>
+            <img
+              src="/logo.png"
+              alt="VitaSyn Logo"
+              className="w-8 h-8 object-contain rounded-lg p-0.5 bg-white/5 border border-[var(--color-border-lavender)]"
+            />
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-xl font-black tracking-tight text-white leading-none">Vita</span>

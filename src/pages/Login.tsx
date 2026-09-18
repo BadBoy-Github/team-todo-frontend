@@ -1,7 +1,7 @@
 import { useState, useContext, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, EyeOff, Sparkles, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
 export const Login = () => {
@@ -49,9 +49,11 @@ export const Login = () => {
 
           {/* Logo & Subtitle */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--color-lavender)] to-[var(--color-mint)] mb-4 shadow-[0_0_20px_rgba(189,166,247,0.4)]">
-              <Sparkles className="w-6 h-6 text-[#0f1015]" />
-            </div>
+            <img
+              src="/logo.png"
+              alt="VitaSyn Logo"
+              className="w-16 h-16 object-contain rounded-2xl mx-auto mb-4 p-1.5 bg-white/5 border border-[var(--color-border-lavender)] shadow-[0_0_24px_rgba(189,166,247,0.35)]"
+            />
 
             <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-none flex items-center justify-center gap-1">
               <span className="text-white">Vita</span>

@@ -1,6 +1,6 @@
 import { useState, useContext, createContext, type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CheckSquare, LogOut, MessageCircle, X, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Users, CheckSquare, LogOut, MessageCircle, X } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
 // ── Sidebar open/close context ───────────────────────────────────────────────
@@ -40,10 +40,12 @@ const SidebarContent = ({ onNav }: { onNav?: () => void }) => {
     <div className="flex flex-col h-full bg-[var(--color-bg-surface)]">
       {/* Logo & Brand */}
       <div className="flex flex-col items-start justify-center px-6 py-6 border-b border-[var(--color-border)]">
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--color-lavender)] to-[var(--color-mint)] shadow-[0_0_16px_rgba(189,166,247,0.35)]">
-            <Sparkles className="w-5 h-5 text-[#0f1015]" />
-          </div>
+        <div className="flex items-center gap-3">
+          <img
+            src="/logo.png"
+            alt="VitaSyn Logo"
+            className="w-10 h-10 object-contain rounded-xl p-0.5 bg-white/5 border border-[var(--color-border-lavender)] shadow-[0_0_16px_rgba(189,166,247,0.25)] shrink-0"
+          />
           <div>
             <h1 className="text-2xl font-black tracking-tight leading-none flex items-center">
               <span className="text-white">Vita</span>
@@ -67,7 +69,9 @@ const SidebarContent = ({ onNav }: { onNav?: () => void }) => {
         <NavLink to="/dashboard" className={navLinkClass} onClick={onNav}>
           {({ isActive }) => (
             <>
-              <LayoutDashboard className={`w-5 h-5 mr-3 shrink-0 transition-colors ${isActive ? 'text-[var(--color-lavender)]' : 'group-hover:text-[var(--color-lavender-light)]'}`} />
+              <LayoutDashboard
+                className={`w-5 h-5 mr-3 shrink-0 transition-colors ${isActive ? "text-[var(--color-lavender)]" : "group-hover:text-[var(--color-lavender-light)]"}`}
+              />
               <span>Dashboard</span>
               {isActive && (
                 <span className="ml-auto w-1.5 h-4 rounded-full bg-[var(--color-lavender)] shadow-[0_0_8px_var(--color-lavender)]" />
@@ -79,7 +83,9 @@ const SidebarContent = ({ onNav }: { onNav?: () => void }) => {
         <NavLink to="/members" className={navLinkClass} onClick={onNav}>
           {({ isActive }) => (
             <>
-              <Users className={`w-5 h-5 mr-3 shrink-0 transition-colors ${isActive ? 'text-[var(--color-lavender)]' : 'group-hover:text-[var(--color-lavender-light)]'}`} />
+              <Users
+                className={`w-5 h-5 mr-3 shrink-0 transition-colors ${isActive ? "text-[var(--color-lavender)]" : "group-hover:text-[var(--color-lavender-light)]"}`}
+              />
               <span>Members</span>
               {isActive && (
                 <span className="ml-auto w-1.5 h-4 rounded-full bg-[var(--color-lavender)] shadow-[0_0_8px_var(--color-lavender)]" />
@@ -91,7 +97,9 @@ const SidebarContent = ({ onNav }: { onNav?: () => void }) => {
         <NavLink to="/tasks" className={navLinkClass} onClick={onNav}>
           {({ isActive }) => (
             <>
-              <CheckSquare className={`w-5 h-5 mr-3 shrink-0 transition-colors ${isActive ? 'text-[var(--color-lavender)]' : 'group-hover:text-[var(--color-lavender-light)]'}`} />
+              <CheckSquare
+                className={`w-5 h-5 mr-3 shrink-0 transition-colors ${isActive ? "text-[var(--color-lavender)]" : "group-hover:text-[var(--color-lavender-light)]"}`}
+              />
               <span>Tasks</span>
               {isActive && (
                 <span className="ml-auto w-1.5 h-4 rounded-full bg-[var(--color-lavender)] shadow-[0_0_8px_var(--color-lavender)]" />
@@ -113,7 +121,9 @@ const SidebarContent = ({ onNav }: { onNav?: () => void }) => {
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--color-mint)] border-2 border-[var(--color-bg-elevated)]" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-[var(--color-text-primary)] truncate">{user.name}</p>
+                <p className="text-sm font-bold text-[var(--color-text-primary)] truncate">
+                  {user.name}
+                </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <span className="inline-block text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--color-mint-muted)] text-[var(--color-mint-dark)] border border-[rgba(171,236,218,0.2)]">
                     {user.role}
@@ -133,7 +143,7 @@ const SidebarContent = ({ onNav }: { onNav?: () => void }) => {
         </button>
 
         <a
-          href="https://chat.whatsapp.com/YOUR_INVITE_LINK"
+          href="https://chat.whatsapp.com/GAfR7wfbKq7FArA0Ki18ve"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center w-full px-4 py-2.5 text-sm font-bold text-[#0f1015] transition-all duration-250 rounded-xl bg-gradient-to-r from-[var(--color-mint)] to-[var(--color-mint-dark)] hover:from-[var(--color-mint-light)] hover:to-[var(--color-mint)] shadow-[0_4px_16px_rgba(171,236,218,0.3)] hover:shadow-[0_6px_22px_rgba(171,236,218,0.45)] hover:scale-[1.02] active:scale-[0.98]"
