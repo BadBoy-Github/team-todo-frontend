@@ -81,8 +81,8 @@ export const Login = () => {
               <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
                 Email Address
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-muted)] flex items-center justify-center">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
@@ -90,7 +90,8 @@ export const Login = () => {
                   type="email"
                   autoComplete="email"
                   required
-                  className="input-field text-sm pl-10"
+                  className="input-field text-sm"
+                  style={{ paddingLeft: '2.75rem' }}
                   placeholder="admin@vitasyn.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -103,8 +104,8 @@ export const Login = () => {
               <label className="block mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
                 Password
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[var(--color-text-muted)]">
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-muted)] flex items-center justify-center">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
@@ -112,7 +113,8 @@ export const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
-                  className="input-field text-sm pl-10 pr-10"
+                  className="input-field text-sm"
+                  style={{ paddingLeft: '2.75rem', paddingRight: '2.75rem' }}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -120,7 +122,7 @@ export const Login = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--color-text-muted)] hover:text-white transition-colors cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--color-text-muted)] hover:text-white transition-colors cursor-pointer"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
