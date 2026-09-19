@@ -6,9 +6,18 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
-export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
+const maxWidthMap = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+};
+
+export const Modal = ({ isOpen, onClose, title, children, maxWidth = 'lg' }: ModalProps) => {
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -25,7 +34,7 @@ export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md transition-opacity duration-200">
       <div 
-        className="w-full max-w-md bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.7),0_0_24px_rgba(189,166,247,0.1)] overflow-hidden max-h-[92vh] flex flex-col transform transition-all duration-300 scale-100 animate-in fade-in zoom-in-95"
+        className={`w-full ${maxWidthMap[maxWidth]} bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.7),0_0_24px_rgba(189,166,247,0.1)] overflow-hidden max-h-[92vh] flex flex-col transform transition-all duration-300 scale-100 animate-in fade-in zoom-in-95`}
       >
         {/* Top Dual-Tone Accent Bar */}
         <div className="h-1 w-full bg-gradient-to-r from-[var(--color-lavender)] via-[var(--color-lavender-light)] to-[var(--color-mint)] shrink-0" />

@@ -6,6 +6,7 @@ import {
   Sparkles, CheckSquare,
 } from 'lucide-react';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import clsx from 'clsx';
 
 type TaskStatus = 'dormant' | 'in_progress' | 'completed';
@@ -60,6 +61,25 @@ export const Tasks = () => {
   const [finalDescription, setFinalDescription] = useState('');
   const [savingStatus, setSavingStatus] = useState(false);
 
+  // Custom modals (replaces native window.confirm & alert)
+  const [taskToDelete, setTaskToDelete] = useState<any>(null);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'info' | 'success';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'danger',
+  });
+
+  const showAlert = (title: string, message: string, variant: 'danger' | 'warning' | 'info' | 'success' = 'danger') => {
+    setAlertDialog({ isOpen: true, title, message, variant });
+  };
+
   const isAdmin = user?.role === 'admin';
 
   const fetchMembers = async () => {
@@ -106,17 +126,22 @@ export const Tasks = () => {
       setIsTaskModalOpen(false);
       fetchMembers();
     } catch (err) {
-      alert('Failed to save task');
+      showAlert('Save Failed', 'Failed to save task. Please try again.');
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete || !activeTabId) return;
+    setIsDeletingTask(true);
     try {
-      await axios.delete(`/api/members/${activeTabId}/tasks/${taskId}`);
+      await axios.delete(`/api/members/${activeTabId}/tasks/${taskToDelete._id}`);
+      setTaskToDelete(null);
       fetchMembers();
     } catch (err) {
-      alert('Failed to delete task');
+      setTaskToDelete(null);
+      showAlert('Delete Failed', 'Failed to delete the task. Please try again.');
+    } finally {
+      setIsDeletingTask(false);
     }
   };
 
@@ -151,7 +176,7 @@ export const Tasks = () => {
       });
       fetchMembers();
     } catch (err) {
-      alert('Failed to update task status. Ensure you have permission.');
+      showAlert('Permission Denied', 'Failed to update task status. Ensure you have permission to edit this task.');
     } finally {
       setSavingStatus(false);
     }
@@ -161,6 +186,13 @@ export const Tasks = () => {
     e.preventDefault();
     if (!completingTask) return;
     await patchStatus(completingTask._id, 'completed', finalDescription);
+    setIsCompleteModalOpen(false);
+    setCompletingTask(null);
+  };
+
+  const handleMakeDormant = async () => {
+    if (!completingTask) return;
+    await patchStatus(completingTask._id, 'dormant');
     setIsCompleteModalOpen(false);
     setCompletingTask(null);
   };
@@ -406,7 +438,7 @@ export const Tasks = () => {
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteTask(task._id)}
+                          onClick={() => setTaskToDelete(task)}
                           className="p-1.5 text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
                           aria-label="Delete task"
                         >
@@ -465,11 +497,12 @@ export const Tasks = () => {
         isOpen={isCompleteModalOpen}
         onClose={() => { setIsCompleteModalOpen(false); setCompletingTask(null); }}
         title="Mark as Completed"
+        maxWidth="xl"
       >
         <form onSubmit={handleCompleteSubmit} className="space-y-4">
           {/* Task summary */}
           {completingTask && (
-            <div className="p-3 rounded-xl bg-[rgba(189,166,247,0.08)] border border-[rgba(189,166,247,0.2)]">
+            <div className="p-3.5 rounded-xl bg-[rgba(189,166,247,0.08)] border border-[rgba(189,166,247,0.2)]">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-lavender)] mb-1">Completing task</p>
               <p className="text-sm font-bold text-white">{completingTask.title}</p>
               {completingTask.description && (
@@ -494,24 +527,60 @@ export const Tasks = () => {
             />
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-end gap-2.5 pt-3">
             <button
               type="button"
               onClick={() => { setIsCompleteModalOpen(false); setCompletingTask(null); }}
-              className="btn-secondary flex-1 text-sm"
+              className="btn-secondary text-sm py-2.5 px-4 whitespace-nowrap cursor-pointer"
             >
               Cancel
             </button>
-            <button type="submit" disabled={savingStatus} className="btn-mint flex-1 text-sm flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={handleMakeDormant}
+              disabled={savingStatus}
+              className="px-4 py-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-hover)] text-[var(--color-text-secondary)] hover:text-white font-bold text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Moon className="w-4 h-4 text-[var(--color-text-muted)] shrink-0" />
+              <span className="whitespace-nowrap">Make Dormant</span>
+            </button>
+            <button
+              type="submit"
+              disabled={savingStatus}
+              className="btn-mint px-5 py-2.5 text-sm flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+            >
               {savingStatus
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <CheckCircle2 className="w-4 h-4" />
+                ? <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                : <CheckCircle2 className="w-4 h-4 shrink-0" />
               }
-              {savingStatus ? 'Saving...' : 'Mark Complete'}
+              <span className="whitespace-nowrap">{savingStatus ? 'Saving...' : 'Mark Complete'}</span>
             </button>
           </div>
         </form>
       </Modal>
+
+      {/* ── Custom Confirmation Modal: Delete Task ── */}
+      <ConfirmModal
+        isOpen={Boolean(taskToDelete)}
+        onClose={() => setTaskToDelete(null)}
+        onConfirm={confirmDeleteTask}
+        title="Delete Task"
+        message={`Are you sure you want to delete "${taskToDelete?.title}"? This task will be permanently removed.`}
+        confirmText="Delete Task"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeletingTask}
+      />
+
+      {/* ── Custom Alert / Error Modal ── */}
+      <ConfirmModal
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        confirmText="Okay"
+      />
 
     </div>
   );

@@ -16,21 +16,34 @@ export const Dashboard = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  let totalTasks    = 0;
+  let totalTasks      = 0;
   let completedTasks  = 0;
   let inProgressTasks = 0;
   let dormantTasks    = 0;
 
   const chartData = members.map(member => {
-    let completed = 0;
-    let pending   = 0;
-    member.tasks.forEach((task: any) => {
+    let completed  = 0;
+    let inProgress = 0;
+    let dormant    = 0;
+    member.tasks?.forEach((task: any) => {
       totalTasks++;
-      if (task.status === 'completed') { completed++; completedTasks++; }
-      else if (task.status === 'in_progress') { pending++; inProgressTasks++; }
-      else { pending++; dormantTasks++; }
+      if (task.status === 'completed') {
+        completed++;
+        completedTasks++;
+      } else if (task.status === 'in_progress') {
+        inProgress++;
+        inProgressTasks++;
+      } else {
+        dormant++;
+        dormantTasks++;
+      }
     });
-    return { name: member.name.split(' ')[0], Completed: completed, Pending: pending };
+    return {
+      name: member.name.split(' ')[0],
+      Dormant: dormant,
+      'In Progress': inProgress,
+      Completed: completed,
+    };
   });
 
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -169,18 +182,22 @@ export const Dashboard = () => {
                 per member
               </span>
             </h3>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">Comparison of completed vs pending tasks per member</p>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">Comparison of dormant, in progress, and completed tasks per member</p>
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 text-xs font-bold self-start sm:self-auto bg-[var(--color-bg-elevated)] px-3 py-1.5 rounded-xl border border-[var(--color-border-subtle)]">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-bold self-start sm:self-auto bg-[var(--color-bg-elevated)] px-3.5 py-1.5 rounded-xl border border-[var(--color-border-subtle)]">
+            <span className="inline-flex items-center gap-1.5 text-[var(--color-text-muted)]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#8c93a8] shadow-[0_0_6px_rgba(140,147,168,0.4)]" />
+              Dormant
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[var(--color-lavender)]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-lavender)] shadow-[0_0_6px_var(--color-lavender)]" />
+              In Progress
+            </span>
             <span className="inline-flex items-center gap-1.5 text-[var(--color-mint-light)]">
               <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-mint-light)] shadow-[0_0_6px_var(--color-mint)]" />
               Completed
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[var(--color-lavender)]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-lavender)]" />
-              Pending
             </span>
           </div>
         </div>
@@ -193,16 +210,22 @@ export const Dashboard = () => {
         ) : (
           <div className="h-72 sm:h-84 lg:h-96 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 15, right: 15, left: -20, bottom: 5 }} barSize={24} barGap={6}>
+              <BarChart data={chartData} margin={{ top: 15, right: 15, left: -20, bottom: 5 }} barSize={18} barGap={4}>
                 <defs>
-                  {/* Gradients for elite dual-tone bars */}
-                  <linearGradient id="mintCompletedGrad" x1="0" y1="0" x2="0" y2="1">
+                  {/* Dormant: Muted Slate Theme (matches Dormant Card) */}
+                  <linearGradient id="dormantGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8c93a8" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#4a5065" stopOpacity={0.7} />
+                  </linearGradient>
+                  {/* In Progress: Lavender Theme (matches In Progress Card) */}
+                  <linearGradient id="inProgressGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#d6c7fb" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#9374eb" stopOpacity={0.85} />
+                  </linearGradient>
+                  {/* Completed: Mint Theme (matches Completed Card) */}
+                  <linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#cbf5ea" stopOpacity={1} />
                     <stop offset="100%" stopColor="#58cfad" stopOpacity={0.85} />
-                  </linearGradient>
-                  <linearGradient id="mintIncompleteGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#58cfad" stopOpacity={0.75} />
-                    <stop offset="100%" stopColor="#1c3d33" stopOpacity={0.65} />
                   </linearGradient>
                 </defs>
 
@@ -225,23 +248,37 @@ export const Dashboard = () => {
                   cursor={{ fill: 'rgba(189, 166, 247, 0.05)' }}
                   content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
-                      const completed = payload[0]?.value || 0;
-                      const pending   = payload[1]?.value || 0;
-                      const total = Number(completed) + Number(pending);
+                      const dormant    = payload.find(p => p.dataKey === 'Dormant')?.value || 0;
+                      const inProgress = payload.find(p => p.dataKey === 'In Progress')?.value || 0;
+                      const completed  = payload.find(p => p.dataKey === 'Completed')?.value || 0;
+                      const total = Number(dormant) + Number(inProgress) + Number(completed);
                       return (
-                        <div className="p-3 bg-[var(--color-bg-elevated)] border border-[var(--color-border-lavender)] rounded-xl shadow-2xl backdrop-blur-md">
-                          <p className="text-xs font-black text-white uppercase tracking-wider mb-2">{label}</p>
-                          <div className="space-y-1 text-xs">
-                            <p className="flex items-center justify-between gap-4 font-bold text-[var(--color-mint-light)]">
-                              <span>Completed:</span>
-                              <span>{completed}</span>
+                        <div className="p-3.5 bg-[var(--color-bg-elevated)] border border-[var(--color-border-lavender)] rounded-xl shadow-2xl backdrop-blur-md min-w-[170px]">
+                          <p className="text-xs font-black text-white uppercase tracking-wider mb-2.5 pb-1 border-b border-[var(--color-border-subtle)]">{label}</p>
+                          <div className="space-y-1.5 text-xs">
+                            <p className="flex items-center justify-between gap-4 font-bold text-[#a3a8b8]">
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-[#8c93a8]" />
+                                Dormant:
+                              </span>
+                              <span>{dormant}</span>
                             </p>
                             <p className="flex items-center justify-between gap-4 font-bold text-[var(--color-lavender)]">
-                              <span>Pending:</span>
-                              <span>{pending}</span>
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-[var(--color-lavender)]" />
+                                In Progress:
+                              </span>
+                              <span>{inProgress}</span>
                             </p>
-                            <div className="pt-1.5 mt-1 border-t border-[var(--color-border-subtle)] flex items-center justify-between font-extrabold text-[var(--color-text-primary)]">
-                              <span>Total:</span>
+                            <p className="flex items-center justify-between gap-4 font-bold text-[var(--color-mint-light)]">
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-[var(--color-mint-light)]" />
+                                Completed:
+                              </span>
+                              <span>{completed}</span>
+                            </p>
+                            <div className="pt-2 mt-1 border-t border-[var(--color-border-subtle)] flex items-center justify-between font-extrabold text-[var(--color-text-primary)]">
+                              <span>Total Tasks:</span>
                               <span>{total}</span>
                             </div>
                           </div>
@@ -251,8 +288,9 @@ export const Dashboard = () => {
                     return null;
                   }}
                 />
-                <Bar dataKey="Completed" fill="url(#mintCompletedGrad)" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="Pending" fill="url(#mintIncompleteGrad)" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="Dormant" fill="url(#dormantGrad)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="In Progress" fill="url(#inProgressGrad)" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="Completed" fill="url(#completedGrad)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

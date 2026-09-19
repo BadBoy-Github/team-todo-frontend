@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Plus, Edit2, Trash2, User as UserIcon, Eye, EyeOff, Sparkles, CheckCircle2 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 
 const inputCls = "input-field text-sm mt-1";
 
@@ -17,6 +18,25 @@ export const Members = () => {
   const [formData, setFormData] = useState({
     name: '', email: '', password: '', phone: '', age: '', sex: 'Male',
   });
+
+  // Custom modals (replaces native window.confirm & alert)
+  const [memberToDelete, setMemberToDelete] = useState<any>(null);
+  const [isDeletingMember, setIsDeletingMember] = useState(false);
+  const [alertDialog, setAlertDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'danger' | 'warning' | 'info' | 'success';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'danger',
+  });
+
+  const showAlert = (title: string, message: string, variant: 'danger' | 'warning' | 'info' | 'success' = 'danger') => {
+    setAlertDialog({ isOpen: true, title, message, variant });
+  };
 
   const isAdmin = user?.role === 'admin';
 
@@ -47,14 +67,19 @@ export const Members = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this member?')) return;
+  const confirmDeleteMember = async () => {
+    if (!memberToDelete) return;
+    setIsDeletingMember(true);
     try {
-      await axios.delete(`/api/members/${id}`);
-      setMembers(members.filter((m) => m._id !== id));
+      await axios.delete(`/api/members/${memberToDelete._id}`);
+      setMembers(members.filter((m) => m._id !== memberToDelete._id));
+      setMemberToDelete(null);
     } catch (err) {
       console.error('Failed to delete member', err);
-      alert('Failed to delete member');
+      setMemberToDelete(null);
+      showAlert('Delete Failed', 'Failed to delete member. Please try again.');
+    } finally {
+      setIsDeletingMember(false);
     }
   };
 
@@ -69,7 +94,7 @@ export const Members = () => {
       setIsModalOpen(false);
       fetchMembers();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to save member');
+      showAlert('Save Failed', err.response?.data?.message || 'Failed to save member profile.');
     }
   };
 
@@ -227,7 +252,7 @@ export const Members = () => {
                     </button>
                     {isAdmin && (
                       <button
-                        onClick={() => handleDelete(member._id)}
+                        onClick={() => setMemberToDelete(member)}
                         className="flex flex-1 items-center justify-center gap-2 py-2.5 text-xs font-bold text-[var(--color-text-secondary)] transition-all hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -307,12 +332,35 @@ export const Members = () => {
             </p>
           )}
           <div className="pt-2">
-            <button type="submit" className="btn-dual w-full text-sm">
+            <button type="submit" className="btn-dual w-full text-sm cursor-pointer">
               {currentMember ? 'Save Changes' : 'Create Team Member'}
             </button>
           </div>
         </form>
       </Modal>
+
+      {/* ── Custom Confirmation Modal: Delete Member ── */}
+      <ConfirmModal
+        isOpen={Boolean(memberToDelete)}
+        onClose={() => setMemberToDelete(null)}
+        onConfirm={confirmDeleteMember}
+        title="Delete Team Member"
+        message={`Are you sure you want to delete ${memberToDelete?.name}? All their assigned tasks and records will be permanently removed.`}
+        confirmText="Delete Member"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeletingMember}
+      />
+
+      {/* ── Custom Alert / Error Modal ── */}
+      <ConfirmModal
+        isOpen={alertDialog.isOpen}
+        onClose={() => setAlertDialog(prev => ({ ...prev, isOpen: false }))}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        confirmText="Okay"
+      />
     </div>
   );
 };
