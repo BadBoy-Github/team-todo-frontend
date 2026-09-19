@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { Users, CheckCircle2, Circle, ListChecks, TrendingUp, Sparkles } from 'lucide-react';
+import { Users, CheckCircle2, Moon, ListChecks, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
 
 export const Dashboard = () => {
   const [members, setMembers] = useState<any[]>([]);
@@ -16,19 +16,21 @@ export const Dashboard = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  let totalTasks = 0;
-  let completedTasks = 0;
-  let incompleteTasks = 0;
+  let totalTasks    = 0;
+  let completedTasks  = 0;
+  let inProgressTasks = 0;
+  let dormantTasks    = 0;
 
   const chartData = members.map(member => {
     let completed = 0;
-    let incomplete = 0;
+    let pending   = 0;
     member.tasks.forEach((task: any) => {
       totalTasks++;
       if (task.status === 'completed') { completed++; completedTasks++; }
-      else { incomplete++; incompleteTasks++; }
+      else if (task.status === 'in_progress') { pending++; inProgressTasks++; }
+      else { pending++; dormantTasks++; }
     });
-    return { name: member.name.split(' ')[0], Completed: completed, Incomplete: incomplete };
+    return { name: member.name.split(' ')[0], Completed: completed, Pending: pending };
   });
 
   const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -41,7 +43,6 @@ export const Dashboard = () => {
       color: 'var(--color-lavender)',
       accentBg: 'rgba(189, 166, 247, 0.12)',
       borderAccent: 'rgba(189, 166, 247, 0.3)',
-      glow: 'rgba(189, 166, 247, 0.2)',
     },
     {
       label: 'Total Tasks',
@@ -50,7 +51,22 @@ export const Dashboard = () => {
       color: 'var(--color-mint)',
       accentBg: 'rgba(171, 236, 218, 0.12)',
       borderAccent: 'rgba(171, 236, 218, 0.3)',
-      glow: 'rgba(171, 236, 218, 0.2)',
+    },
+    {
+      label: 'Dormant',
+      value: dormantTasks,
+      icon: Moon,
+      color: 'var(--color-text-muted)',
+      accentBg: 'rgba(100, 107, 128, 0.12)',
+      borderAccent: 'rgba(100, 107, 128, 0.25)',
+    },
+    {
+      label: 'In Progress',
+      value: inProgressTasks,
+      icon: Loader2,
+      color: 'var(--color-lavender)',
+      accentBg: 'rgba(189, 166, 247, 0.1)',
+      borderAccent: 'rgba(189, 166, 247, 0.25)',
     },
     {
       label: 'Completed',
@@ -59,16 +75,6 @@ export const Dashboard = () => {
       color: 'var(--color-mint-light)',
       accentBg: 'rgba(203, 245, 234, 0.12)',
       borderAccent: 'rgba(203, 245, 234, 0.3)',
-      glow: 'rgba(203, 245, 234, 0.2)',
-    },
-    {
-      label: 'Incomplete',
-      value: incompleteTasks,
-      icon: Circle,
-      color: 'var(--color-mint-dark)',
-      accentBg: 'rgba(88, 207, 173, 0.1)',
-      borderAccent: 'rgba(88, 207, 173, 0.25)',
-      glow: 'rgba(88, 207, 173, 0.15)',
     },
   ];
 
@@ -119,7 +125,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Stat Cards with Dual Tone and Micro Animations */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-5">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -163,7 +169,7 @@ export const Dashboard = () => {
                 per member
               </span>
             </h3>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">Comparison of completed vs incomplete tasks</p>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">Comparison of completed vs pending tasks per member</p>
           </div>
 
           {/* Legend */}
@@ -172,9 +178,9 @@ export const Dashboard = () => {
               <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-mint-light)] shadow-[0_0_6px_var(--color-mint)]" />
               Completed
             </span>
-            <span className="inline-flex items-center gap-1.5 text-[var(--color-mint-dark)]">
-              <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-mint-dark)]" />
-              Incomplete
+            <span className="inline-flex items-center gap-1.5 text-[var(--color-lavender)]">
+              <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-lavender)]" />
+              Pending
             </span>
           </div>
         </div>
@@ -220,8 +226,8 @@ export const Dashboard = () => {
                   content={({ active, payload, label }) => {
                     if (active && payload && payload.length) {
                       const completed = payload[0]?.value || 0;
-                      const incomplete = payload[1]?.value || 0;
-                      const total = Number(completed) + Number(incomplete);
+                      const pending   = payload[1]?.value || 0;
+                      const total = Number(completed) + Number(pending);
                       return (
                         <div className="p-3 bg-[var(--color-bg-elevated)] border border-[var(--color-border-lavender)] rounded-xl shadow-2xl backdrop-blur-md">
                           <p className="text-xs font-black text-white uppercase tracking-wider mb-2">{label}</p>
@@ -230,9 +236,9 @@ export const Dashboard = () => {
                               <span>Completed:</span>
                               <span>{completed}</span>
                             </p>
-                            <p className="flex items-center justify-between gap-4 font-bold text-[var(--color-mint-dark)]">
-                              <span>Incomplete:</span>
-                              <span>{incomplete}</span>
+                            <p className="flex items-center justify-between gap-4 font-bold text-[var(--color-lavender)]">
+                              <span>Pending:</span>
+                              <span>{pending}</span>
                             </p>
                             <div className="pt-1.5 mt-1 border-t border-[var(--color-border-subtle)] flex items-center justify-between font-extrabold text-[var(--color-text-primary)]">
                               <span>Total:</span>
@@ -246,7 +252,7 @@ export const Dashboard = () => {
                   }}
                 />
                 <Bar dataKey="Completed" fill="url(#mintCompletedGrad)" radius={[8, 8, 0, 0]} />
-                <Bar dataKey="Incomplete" fill="url(#mintIncompleteGrad)" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="Pending" fill="url(#mintIncompleteGrad)" radius={[8, 8, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -1,18 +1,64 @@
 import { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { Plus, Edit2, Trash2, CheckCircle2, Circle, Sparkles, CheckSquare } from 'lucide-react';
+import {
+  Plus, Edit2, Trash2, CheckCircle2, Loader2, Moon,
+  Sparkles, CheckSquare,
+} from 'lucide-react';
 import { Modal } from '../components/Modal';
 import clsx from 'clsx';
+
+type TaskStatus = 'dormant' | 'in_progress' | 'completed';
+
+// ── Status config ──────────────────────────────────────────────────────────────
+const STATUS_CONFIG: Record<TaskStatus, {
+  label: string;
+  icon: React.ElementType;
+  pill: string;
+  nextLabel: string;
+}> = {
+  dormant: {
+    label: 'Dormant',
+    icon: Moon,
+    pill: 'bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]',
+    nextLabel: 'Start working',
+  },
+  in_progress: {
+    label: 'In Progress',
+    icon: Loader2,
+    pill: 'bg-[rgba(189,166,247,0.12)] text-[var(--color-lavender-light)] border border-[rgba(189,166,247,0.3)]',
+    nextLabel: 'Mark as complete',
+  },
+  completed: {
+    label: 'Completed',
+    icon: CheckCircle2,
+    pill: 'bg-[rgba(171,236,218,0.12)] text-[var(--color-mint-light)] border border-[rgba(171,236,218,0.32)]',
+    nextLabel: 'Revert to In Progress',
+  },
+};
+
+const normalizeStatus = (status?: string): TaskStatus => {
+  if (status === 'completed') return 'completed';
+  if (status === 'in_progress') return 'in_progress';
+  return 'dormant';
+};
 
 export const Tasks = () => {
   const { user } = useContext(AuthContext);
   const [members, setMembers] = useState<any[]>([]);
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Admin task create/edit modal
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState<any>(null);
   const [formData, setFormData] = useState({ title: '', description: '' });
+
+  // Completion modal (member flow)
+  const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [completingTask, setCompletingTask] = useState<any>(null);
+  const [finalDescription, setFinalDescription] = useState('');
+  const [savingStatus, setSavingStatus] = useState(false);
 
   const isAdmin = user?.role === 'admin';
 
@@ -21,7 +67,6 @@ export const Tasks = () => {
       const res = await axios.get('/api/members');
       setMembers(res.data);
       if (res.data.length > 0 && !activeTabId) {
-        // If current logged-in user is in members, default to them, otherwise first member
         const userMember = res.data.find((m: any) => m._id === user?.id);
         setActiveTabId(userMember ? userMember._id : res.data[0]._id);
       }
@@ -36,16 +81,17 @@ export const Tasks = () => {
     fetchMembers();
   }, []);
 
+  // ── Admin modal ──────────────────────────────────────────────────────────────
   const openAddModal = () => {
     setCurrentTask(null);
     setFormData({ title: '', description: '' });
-    setIsModalOpen(true);
+    setIsTaskModalOpen(true);
   };
 
   const openEditModal = (task: any) => {
     setCurrentTask(task);
     setFormData({ title: task.title, description: task.description || '' });
-    setIsModalOpen(true);
+    setIsTaskModalOpen(true);
   };
 
   const handleTaskSubmit = async (e: React.FormEvent) => {
@@ -57,7 +103,7 @@ export const Tasks = () => {
       } else {
         await axios.post(`/api/members/${activeTabId}/tasks`, formData);
       }
-      setIsModalOpen(false);
+      setIsTaskModalOpen(false);
       fetchMembers();
     } catch (err) {
       alert('Failed to save task');
@@ -74,19 +120,62 @@ export const Tasks = () => {
     }
   };
 
-  const toggleTaskStatus = async (taskId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'completed' ? 'incomplete' : 'completed';
-    try {
-      await axios.patch(`/api/members/${activeTabId}/tasks/${taskId}/status`, { status: newStatus });
-      fetchMembers();
-    } catch (err) {
-      alert('Failed to update task status. Ensure you have permission.');
+  // ── Status change handler ───────────────────────────────────────────────────
+  const handleStatusClick = (task: any) => {
+    const status: TaskStatus = normalizeStatus(task.status);
+
+    if (status === 'dormant') {
+      // dormant → in_progress (direct, no modal)
+      patchStatus(task._id, 'in_progress');
+    } else if (status === 'in_progress') {
+      // in_progress → completed (open modal for final description)
+      setCompletingTask(task);
+      setFinalDescription('');
+      setIsCompleteModalOpen(true);
+    } else {
+      // completed → in_progress (revert, direct)
+      patchStatus(task._id, 'in_progress');
     }
   };
 
-  const activeMember = members.find(m => m._id === activeTabId);
-  const canToggleStatus = user?.id === activeTabId;
+  const patchStatus = async (
+    taskId: string,
+    status: TaskStatus,
+    finalDesc?: string,
+  ) => {
+    setSavingStatus(true);
+    try {
+      await axios.patch(`/api/members/${activeTabId}/tasks/${taskId}/status`, {
+        status,
+        ...(finalDesc !== undefined && { finalDescription: finalDesc }),
+      });
+      fetchMembers();
+    } catch (err) {
+      alert('Failed to update task status. Ensure you have permission.');
+    } finally {
+      setSavingStatus(false);
+    }
+  };
 
+  const handleCompleteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!completingTask) return;
+    await patchStatus(completingTask._id, 'completed', finalDescription);
+    setIsCompleteModalOpen(false);
+    setCompletingTask(null);
+  };
+
+  // ── Derived data ────────────────────────────────────────────────────────────
+  const activeMember = members.find(m => m._id === activeTabId);
+  const canChangeStatus = user?.id === activeTabId;
+
+  const dormantCount    = activeMember?.tasks?.filter((t: any) => normalizeStatus(t.status) === 'dormant').length    ?? 0;
+  const inProgressCount = activeMember?.tasks?.filter((t: any) => normalizeStatus(t.status) === 'in_progress').length ?? 0;
+  const completedCount  = activeMember?.tasks?.filter((t: any) => normalizeStatus(t.status) === 'completed').length  ?? 0;
+  const totalCount      = activeMember?.tasks?.length ?? 0;
+  const progressPct     = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // ── Loading / empty states ──────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-16 space-y-4">
@@ -109,13 +198,10 @@ export const Tasks = () => {
     );
   }
 
-  const completedCount = activeMember?.tasks?.filter((t: any) => t.status === 'completed').length ?? 0;
-  const totalCount = activeMember?.tasks?.length ?? 0;
-  const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg-base)]">
-      {/* Top Member Tabs Bar */}
+
+      {/* ── Member Tabs ── */}
       <div className="shrink-0 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] sticky top-0 z-20 shadow-sm backdrop-blur-md">
         <div className="flex overflow-x-auto hide-scrollbar px-4 sm:px-6 py-3 gap-2 max-w-7xl mx-auto">
           {members.map(member => {
@@ -147,10 +233,11 @@ export const Tasks = () => {
         </div>
       </div>
 
-      {/* Task Content Area */}
+      {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
         <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8">
-          {/* Task header banner */}
+
+          {/* Header banner */}
           <div className="card p-5 sm:p-7 relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--color-lavender)] via-[var(--color-lavender-light)] to-[var(--color-mint)] opacity-60" />
 
@@ -158,21 +245,24 @@ export const Tasks = () => {
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-lavender-muted)] border border-[var(--color-border)] mb-2">
                   <Sparkles className="w-3.5 h-3.5 text-[var(--color-lavender)]" />
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-lavender-light)]">
-                    Task Workspace
-                  </span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--color-lavender-light)]">Task Workspace</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight">
                   {activeMember?.name}'s Tasks
                 </h2>
-                <div className="flex flex-wrap items-center gap-2.5 mt-2">
-                  <span className="badge-completed">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {/* Dormant */}
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)] border border-[var(--color-border)]">
+                    <Moon className="w-3 h-3" />{dormantCount} Dormant
+                  </span>
+                  {/* In Progress */}
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-[rgba(189,166,247,0.1)] text-[var(--color-lavender-light)] border border-[rgba(189,166,247,0.25)]">
+                    <Loader2 className="w-3 h-3" />{inProgressCount} In Progress
+                  </span>
+                  {/* Completed */}
+                  <span className="badge-completed text-[11px]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-mint)] shadow-[0_0_6px_var(--color-mint)]" />
                     {completedCount} Completed
-                  </span>
-                  <span className="badge-incomplete">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-mint-dark)]" />
-                    {totalCount - completedCount} Pending
                   </span>
                   <span className="text-xs font-bold text-[var(--color-text-muted)] ml-1">
                     ({progressPct}% finished)
@@ -181,17 +271,14 @@ export const Tasks = () => {
               </div>
 
               {isAdmin && (
-                <button
-                  onClick={openAddModal}
-                  className="btn-dual flex items-center gap-2 self-start sm:self-auto text-xs sm:text-sm"
-                >
+                <button onClick={openAddModal} className="btn-dual flex items-center gap-2 self-start sm:self-auto text-xs sm:text-sm">
                   <Plus className="w-4 h-4" />
                   <span>Assign New Task</span>
                 </button>
               )}
             </div>
 
-            {/* Progress Bar inside banner */}
+            {/* Progress bar */}
             <div className="mt-5 pt-4 border-t border-[var(--color-border-subtle)]">
               <div className="h-2 rounded-full bg-[var(--color-bg-elevated)] overflow-hidden p-0.5 border border-[var(--color-border-subtle)]">
                 <div
@@ -206,7 +293,7 @@ export const Tasks = () => {
             </div>
           </div>
 
-          {/* Tasks list */}
+          {/* ── Task List ── */}
           {totalCount === 0 ? (
             <div className="card flex flex-col items-center justify-center p-12 sm:p-16 text-center border-dashed">
               <CheckSquare className="w-12 h-12 text-[var(--color-text-muted)] mb-3 opacity-40" />
@@ -216,7 +303,11 @@ export const Tasks = () => {
           ) : (
             <div className="space-y-3">
               {activeMember.tasks.map((task: any) => {
-                const isDone = task.status === 'completed';
+                const status: TaskStatus = normalizeStatus(task.status);
+                const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.dormant;
+                const isDone = status === 'completed';
+                const StatusIcon = cfg.icon;
+
                 return (
                   <div
                     key={task._id}
@@ -224,26 +315,41 @@ export const Tasks = () => {
                       'group flex items-start justify-between p-4 sm:p-5 rounded-2xl border transition-all duration-250',
                       isDone
                         ? 'bg-[var(--color-bg-card)]/60 border-[rgba(171,236,218,0.2)] shadow-sm'
-                        : 'bg-[var(--color-bg-card)] border-[var(--color-border)] hover:border-[var(--color-border-lavender)] hover:shadow-lg'
+                        : status === 'in_progress'
+                          ? 'bg-[var(--color-bg-card)] border-[rgba(189,166,247,0.22)] shadow-[0_0_20px_-6px_rgba(189,166,247,0.15)]'
+                          : 'bg-[var(--color-bg-card)] border-[var(--color-border)] hover:border-[var(--color-border-lavender)] hover:shadow-lg'
                     )}
                   >
-                    <div className="flex items-start flex-1 gap-3.5 mr-3">
-                      {/* Status toggle button */}
-                      <button
-                        onClick={() => canToggleStatus && toggleTaskStatus(task._id, task.status)}
-                        disabled={!canToggleStatus}
-                        className={clsx(
-                          'shrink-0 mt-0.5 transition-all duration-200',
-                          canToggleStatus ? 'cursor-pointer hover:scale-115 active:scale-95' : 'cursor-not-allowed opacity-40',
-                          isDone ? 'text-[var(--color-mint-light)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-lavender)]'
-                        )}
-                        title={canToggleStatus ? (isDone ? 'Mark as incomplete' : 'Mark as completed') : 'Only the task owner can toggle this'}
-                      >
-                        {isDone
-                          ? <CheckCircle2 className="w-6 h-6 shadow-[0_0_12px_rgba(171,236,218,0.2)]" />
-                          : <Circle className="w-6 h-6" />
-                        }
-                      </button>
+                    <div className="flex items-start flex-1 gap-3.5 mr-3 min-w-0">
+
+                      {/* Status toggle button (member only) */}
+                      {canChangeStatus ? (
+                        <button
+                          onClick={() => handleStatusClick(task)}
+                          disabled={savingStatus}
+                          className={clsx(
+                            'shrink-0 mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-95',
+                            isDone
+                              ? 'border-[var(--color-mint)] bg-[rgba(171,236,218,0.15)] text-[var(--color-mint-light)]'
+                              : status === 'in_progress'
+                                ? 'border-[var(--color-lavender)] bg-[rgba(189,166,247,0.1)] text-[var(--color-lavender)]'
+                                : 'border-[var(--color-border)] bg-transparent text-[var(--color-text-muted)] hover:border-[var(--color-lavender)] hover:text-[var(--color-lavender)]'
+                          )}
+                          title={cfg.nextLabel}
+                        >
+                          <StatusIcon className={clsx('w-3.5 h-3.5', status === 'in_progress' && 'animate-spin')} />
+                        </button>
+                      ) : (
+                        /* Non-owner: just show status icon, no interaction */
+                        <div className={clsx(
+                          'shrink-0 mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center opacity-50',
+                          isDone ? 'border-[var(--color-mint)] text-[var(--color-mint-light)]'
+                            : status === 'in_progress' ? 'border-[var(--color-lavender)] text-[var(--color-lavender)]'
+                              : 'border-[var(--color-border)] text-[var(--color-text-muted)]'
+                        )}>
+                          <StatusIcon className="w-3.5 h-3.5" />
+                        </div>
+                      )}
 
                       <div className="min-w-0 flex-1">
                         <h4 className={clsx(
@@ -254,6 +360,7 @@ export const Tasks = () => {
                         )}>
                           {task.title}
                         </h4>
+
                         {task.description && (
                           <p className={clsx(
                             'mt-1 text-xs sm:text-sm font-medium leading-relaxed',
@@ -262,14 +369,33 @@ export const Tasks = () => {
                             {task.description}
                           </p>
                         )}
+
+                        {/* Final description (completed tasks only) */}
+                        {isDone && task.finalDescription && (
+                          <div className="mt-2.5 p-3 rounded-xl bg-[rgba(171,236,218,0.06)] border border-[rgba(171,236,218,0.15)]">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-mint-dark)] mb-1">
+                              Completion Notes
+                            </p>
+                            <p className="text-xs text-[var(--color-mint-dark)]/80 leading-relaxed">
+                              {task.finalDescription}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Status badge */}
                         <div className="mt-2.5 flex items-center gap-2">
-                          <span className={isDone ? 'badge-completed text-[11px]' : 'badge-incomplete text-[11px]'}>
-                            {isDone ? 'Completed' : 'In Progress'}
+                          <span className={clsx(
+                            'inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full',
+                            cfg.pill
+                          )}>
+                            <StatusIcon className={clsx('w-3 h-3', status === 'in_progress' && 'animate-spin')} />
+                            {cfg.label}
                           </span>
                         </div>
                       </div>
                     </div>
 
+                    {/* Admin edit / delete controls */}
                     {isAdmin && (
                       <div className="flex items-center gap-1 shrink-0 bg-[var(--color-bg-elevated)] p-1 rounded-xl border border-[var(--color-border-subtle)]">
                         <button
@@ -296,10 +422,10 @@ export const Tasks = () => {
         </div>
       </div>
 
-      {/* Task Modal */}
+      {/* ── Admin: Create / Edit Task Modal ── */}
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
         title={currentTask ? 'Edit Task' : 'Assign New Task'}
       >
         <form onSubmit={handleTaskSubmit} className="space-y-4">
@@ -333,6 +459,60 @@ export const Tasks = () => {
           </div>
         </form>
       </Modal>
+
+      {/* ── Member: Mark as Complete Modal ── */}
+      <Modal
+        isOpen={isCompleteModalOpen}
+        onClose={() => { setIsCompleteModalOpen(false); setCompletingTask(null); }}
+        title="Mark as Completed"
+      >
+        <form onSubmit={handleCompleteSubmit} className="space-y-4">
+          {/* Task summary */}
+          {completingTask && (
+            <div className="p-3 rounded-xl bg-[rgba(189,166,247,0.08)] border border-[rgba(189,166,247,0.2)]">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-lavender)] mb-1">Completing task</p>
+              <p className="text-sm font-bold text-white">{completingTask.title}</p>
+              {completingTask.description && (
+                <p className="text-xs text-[var(--color-text-secondary)] mt-1">{completingTask.description}</p>
+              )}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)]">
+              Completion Notes <span className="font-normal text-[var(--color-text-muted)] lowercase">(optional)</span>
+            </label>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1 mb-2">
+              Describe what you did, any outcomes, blockers resolved, or comments on the finished work.
+            </p>
+            <textarea
+              rows={4}
+              value={finalDescription}
+              onChange={(e) => setFinalDescription(e.target.value)}
+              className="input-field text-sm resize-none"
+              placeholder="e.g. Implemented the feature, tested on mobile and desktop, merged to main branch..."
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => { setIsCompleteModalOpen(false); setCompletingTask(null); }}
+              className="btn-secondary flex-1 text-sm"
+            >
+              Cancel
+            </button>
+            <button type="submit" disabled={savingStatus} className="btn-mint flex-1 text-sm flex items-center justify-center gap-2">
+              {savingStatus
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <CheckCircle2 className="w-4 h-4" />
+              }
+              {savingStatus ? 'Saving...' : 'Mark Complete'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
     </div>
   );
 };
