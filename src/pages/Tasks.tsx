@@ -312,15 +312,48 @@ export const Tasks = () => {
 
             {/* Progress bar */}
             <div className="mt-5 pt-4 border-t border-[var(--color-border-subtle)]">
-              <div className="h-2 rounded-full bg-[var(--color-bg-elevated)] overflow-hidden p-0.5 border border-[var(--color-border-subtle)]">
-                <div
-                  className="h-full rounded-full transition-all duration-600 ease-out"
-                  style={{
-                    width: `${progressPct}%`,
-                    background: `linear-gradient(90deg, var(--color-mint-dark), var(--color-mint))`,
-                    boxShadow: progressPct > 0 ? '0 0 10px rgba(171,236,218,0.3)' : 'none',
-                  }}
-                />
+              <div
+                className="h-2.5 rounded-full bg-[var(--color-bg-elevated)] overflow-hidden p-0.5 border border-[var(--color-border-subtle)]"
+                title={totalCount > 0 ? `${completedCount} completed, ${inProgressCount} in progress, ${dormantCount} dormant` : 'No tasks assigned'}
+              >
+                {totalCount > 0 ? (
+                  <div className="h-full w-full rounded-full overflow-hidden flex">
+                    {completedCount > 0 && (
+                      <div
+                        style={{
+                          width: `${(completedCount / totalCount) * 100}%`,
+                          background: 'linear-gradient(90deg, var(--color-mint-dark), var(--color-mint))',
+                          boxShadow: '0 0 10px rgba(171,236,218,0.35)',
+                        }}
+                        className="h-full transition-all duration-500 ease-out shrink-0"
+                        title={`Completed: ${completedCount} (${Math.round((completedCount / totalCount) * 100)}%)`}
+                      />
+                    )}
+                    {inProgressCount > 0 && (
+                      <div
+                        style={{
+                          width: `${(inProgressCount / totalCount) * 100}%`,
+                          background: 'linear-gradient(90deg, #9374eb, var(--color-lavender))',
+                          boxShadow: '0 0 10px rgba(189,166,247,0.35)',
+                        }}
+                        className="h-full transition-all duration-500 ease-out shrink-0"
+                        title={`In Progress: ${inProgressCount} (${Math.round((inProgressCount / totalCount) * 100)}%)`}
+                      />
+                    )}
+                    {dormantCount > 0 && (
+                      <div
+                        style={{
+                          width: `${(dormantCount / totalCount) * 100}%`,
+                          background: 'linear-gradient(90deg, #4a5065, #8c93a8)',
+                        }}
+                        className="h-full transition-all duration-500 ease-out shrink-0"
+                        title={`Dormant: ${dormantCount} (${Math.round((dormantCount / totalCount) * 100)}%)`}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-full rounded-full" style={{ width: '0%' }} />
+                )}
               </div>
             </div>
           </div>

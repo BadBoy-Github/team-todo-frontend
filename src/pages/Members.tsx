@@ -155,6 +155,8 @@ export const Members = () => {
         <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {members.map((member) => {
             const completed = member.tasks?.filter((t: any) => t.status === 'completed').length ?? 0;
+            const inProgress = member.tasks?.filter((t: any) => t.status === 'in_progress').length ?? 0;
+            const dormant = member.tasks?.filter((t: any) => t.status !== 'completed' && t.status !== 'in_progress').length ?? 0;
             const total = member.tasks?.length ?? 0;
             const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
             const canEdit = isAdmin || user?.id === member._id;
@@ -221,21 +223,54 @@ export const Members = () => {
                   {/* Task progress */}
                   <div className="mt-auto pt-4 border-t border-[var(--color-border-subtle)]">
                     <div className="flex justify-between items-center text-xs mb-1.5 font-bold">
-                      <span className="text-[var(--color-text-muted)] flex items-center gap-1">
+                      <span className="text-[var(--color-text-muted)] flex items-center gap-1.5">
                         <CheckCircle2 className="w-3.5 h-3.5 text-[var(--color-mint)]" />
                         Tasks Progress
                       </span>
                       <span className="text-[var(--color-mint-light)] font-mono">{completed}/{total} ({pct}%)</span>
                     </div>
-                    <div className="h-2 rounded-full bg-[var(--color-bg-surface)] overflow-hidden p-0.5 border border-[var(--color-border-subtle)]">
-                      <div
-                        className="h-full rounded-full transition-all duration-600 ease-out"
-                        style={{
-                          width: `${pct}%`,
-                          background: `linear-gradient(90deg, var(--color-mint-dark), var(--color-mint))`,
-                          boxShadow: pct > 0 ? '0 0 10px rgba(171,236,218,0.3)' : 'none',
-                        }}
-                      />
+                    <div
+                      className="h-2 rounded-full bg-[var(--color-bg-surface)] overflow-hidden p-0.5 border border-[var(--color-border-subtle)]"
+                      title={total > 0 ? `${completed} completed, ${inProgress} in progress, ${dormant} dormant` : 'No tasks assigned'}
+                    >
+                      {total > 0 ? (
+                        <div className="h-full w-full rounded-full overflow-hidden flex">
+                          {completed > 0 && (
+                            <div
+                              style={{
+                                width: `${(completed / total) * 100}%`,
+                                background: 'linear-gradient(90deg, var(--color-mint-dark), var(--color-mint))',
+                                boxShadow: '0 0 8px rgba(171,236,218,0.3)',
+                              }}
+                              className="h-full transition-all duration-500 ease-out shrink-0"
+                              title={`Completed: ${completed} (${Math.round((completed / total) * 100)}%)`}
+                            />
+                          )}
+                          {inProgress > 0 && (
+                            <div
+                              style={{
+                                width: `${(inProgress / total) * 100}%`,
+                                background: 'linear-gradient(90deg, #9374eb, var(--color-lavender))',
+                                boxShadow: '0 0 8px rgba(189,166,247,0.3)',
+                              }}
+                              className="h-full transition-all duration-500 ease-out shrink-0"
+                              title={`In Progress: ${inProgress} (${Math.round((inProgress / total) * 100)}%)`}
+                            />
+                          )}
+                          {dormant > 0 && (
+                            <div
+                              style={{
+                                width: `${(dormant / total) * 100}%`,
+                                background: 'linear-gradient(90deg, #4a5065, #8c93a8)',
+                              }}
+                              className="h-full transition-all duration-500 ease-out shrink-0"
+                              title={`Dormant: ${dormant} (${Math.round((dormant / total) * 100)}%)`}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="h-full rounded-full" style={{ width: '0%' }} />
+                      )}
                     </div>
                   </div>
                 </div>
