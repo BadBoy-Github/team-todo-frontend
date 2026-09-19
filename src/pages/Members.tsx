@@ -161,6 +161,7 @@ export const Members = () => {
             const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
             const canEdit = isAdmin || user?.id === member._id;
             const isCurrentUser = user?.id === member._id;
+            const canViewContact = isAdmin || isCurrentUser;
 
             return (
               <div 
@@ -197,7 +198,9 @@ export const Members = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-[var(--color-text-muted)] truncate font-medium">{member.email}</p>
+                        {canViewContact && member.email && (
+                          <p className="text-xs text-[var(--color-text-muted)] truncate font-medium">{member.email}</p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -210,10 +213,12 @@ export const Members = () => {
                         {member.userId}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-[var(--color-text-muted)]">Phone</span>
-                      <span className="text-[var(--color-text-secondary)]">{member.phone || '—'}</span>
-                    </div>
+                    {canViewContact && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-[var(--color-text-muted)]">Phone</span>
+                        <span className="text-[var(--color-text-secondary)]">{member.phone || '—'}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center">
                       <span className="text-[var(--color-text-muted)]">Age / Sex</span>
                       <span className="text-[var(--color-text-secondary)]">{member.age || '—'} · {member.sex || '—'}</span>
